@@ -1,0 +1,217 @@
+{{#if (eq template "nextjs")}}
+# ─── Stage 1: Dependencies ────────────────────────────────────────────────────
+FROM node:20-alpine AS deps
+RUN apk add --no-cache libc6-compat
+WORKDIR /app
+
+COPY package.json {{#if (eq packageManager "npm")}}package-lock.json{{/if}}{{#if (eq packageManager "pnpm")}}pnpm-lock.yaml{{/if}}{{#if (eq packageManager "yarn")}}yarn.lock{{/if}}{{#if (eq packageManager "bun")}}bun.lockb{{/if}} ./
+{{#if (eq packageManager "pnpm")}}
+RUN corepack enable pnpm && pnpm install --frozen-lockfile
+{{/if}}
+{{#if (eq packageManager "yarn")}}
+RUN corepack enable yarn && yarn install --immutable
+{{/if}}
+{{#if (eq packageManager "npm")}}
+RUN npm ci
+{{/if}}
+{{#if (eq packageManager "bun")}}
+RUN npm install -g bun && bun install --frozen-lockfile
+{{/if}}
+
+# ─── Stage 2: Builder ─────────────────────────────────────────────────────────
+FROM node:20-alpine AS builder
+WORKDIR /app
+
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+
+{{#if (neq database "none")}}
+# Generate Prisma client
+RUN {{#if (eq packageManager "npm")}}npx{{/if}}{{#if (eq packageManager "pnpm")}}pnpm exec{{/if}}{{#if (eq packageManager "yarn")}}yarn{{/if}}{{#if (eq packageManager "bun")}}bunx{{/if}} prisma generate
+{{/if}}
+
+ENV NEXT_TELEMETRY_DISABLED=1
+
+RUN {{#if (eq packageManager "npm")}}npm run build{{/if}}{{#if (eq packageManager "pnpm")}}pnpm build{{/if}}{{#if (eq packageManager "yarn")}}yarn build{{/if}}{{#if (eq packageManager "bun")}}bun run build{{/if}}
+
+# ─── Stage 3: Runner ──────────────────────────────────────────────────────────
+FROM node:20-alpine AS runner
+WORKDIR /app
+
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nextjs
+
+COPY --from=builder /app/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+
+USER nextjs
+EXPOSE 3000
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
+
+CMD ["node", "server.js"]
+{{/if}}
+
+{{#if (eq template "api")}}
+# ─── Stage 1: Dependencies ────────────────────────────────────────────────────
+FROM node:20-alpine AS deps
+RUN apk add --no-cache libc6-compat
+WORKDIR /app
+
+COPY package.json {{#if (eq packageManager "npm")}}package-lock.json{{/if}}{{#if (eq packageManager "pnpm")}}pnpm-lock.yaml{{/if}}{{#if (eq packageManager "yarn")}}yarn.lock{{/if}}{{#if (eq packageManager "bun")}}bun.lockb{{/if}} ./
+{{#if (eq packageManager "pnpm")}}
+RUN corepack enable pnpm && pnpm install --frozen-lockfile --prod
+{{/if}}
+{{#if (eq packageManager "yarn")}}
+RUN corepack enable yarn && yarn workspaces focus --production
+{{/if}}
+{{#if (eq packageManager "npm")}}
+RUN npm ci --omit=dev
+{{/if}}
+{{#if (eq packageManager "bun")}}
+RUN npm install -g bun && bun install --frozen-lockfile --production
+{{/if}}
+
+# ─── Stage 2: Builder ─────────────────────────────────────────────────────────
+FROM node:20-alpine AS builder
+WORKDIR /app
+
+COPY package.json {{#if (eq packageManager "npm")}}package-lock.json{{/if}}{{#if (eq packageManager "pnpm")}}pnpm-lock.yaml{{/if}}{{#if (eq packageManager "yarn")}}yarn.lock{{/if}}{{#if (eq packageManager "bun")}}bun.lockb{{/if}} ./
+{{#if (eq packageManager "pnpm")}}
+RUN corepack enable pnpm && pnpm install --frozen-lockfile
+{{/if}}
+{{#if (eq packageManager "yarn")}}
+RUN corepack enable yarn && yarn install --immutable
+{{/if}}
+{{#if (eq packageManager "npm")}}
+RUN npm ci
+{{/if}}
+{{#if (eq packageManager "bun")}}
+RUN npm install -g bun && bun install --frozen-lockfile
+{{/if}}
+
+COPY . .
+
+{{#if (neq database "none")}}
+RUN {{#if (eq packageManager "npm")}}npx{{/if}}{{#if (eq packageManager "pnpm")}}pnpm exec{{/if}}{{#if (eq packageManager "yarn")}}yarn{{/if}}{{#if (eq packageManager "bun")}}bunx{{/if}} prisma generate
+{{/if}}
+
+RUN {{#if (eq packageManager "npm")}}npm run build{{/if}}{{#if (eq packageManager "pnpm")}}pnpm build{{/if}}{{#if (eq packageManager "yarn")}}yarn build{{/if}}{{#if (eq packageManager "bun")}}bun run build{{/if}}
+
+# ─── Stage 3: Runner ──────────────────────────────────────────────────────────
+FROM node:20-alpine AS runner
+RUN apk add --no-cache dumb-init
+WORKDIR /app
+
+ENV NODE_ENV=production
+
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 appuser
+
+COPY --from=deps --chown=appuser:nodejs /app/node_modules ./node_modules
+COPY --from=builder --chown=appuser:nodejs /app/dist ./dist
+{{#if (neq database "none")}}
+COPY --from=builder --chown=appuser:nodejs /app/node_modules/.prisma ./node_modules/.prisma
+COPY --chown=appuser:nodejs prisma ./prisma
+{{/if}}
+COPY --chown=appuser:nodejs package.json ./
+
+USER appuser
+EXPOSE 3000
+
+ENTRYPOINT ["dumb-init", "--"]
+CMD ["node", "dist/index.js"]
+{{/if}}
+
+{{#if (eq template "cli")}}
+# ─── Stage 1: Builder ─────────────────────────────────────────────────────────
+FROM node:20-alpine AS builder
+RUN apk add --no-cache libc6-compat
+WORKDIR /app
+
+COPY package.json {{#if (eq packageManager "npm")}}package-lock.json{{/if}}{{#if (eq packageManager "pnpm")}}pnpm-lock.yaml{{/if}}{{#if (eq packageManager "yarn")}}yarn.lock{{/if}}{{#if (eq packageManager "bun")}}bun.lockb{{/if}} ./
+{{#if (eq packageManager "pnpm")}}
+RUN corepack enable pnpm && pnpm install --frozen-lockfile
+{{/if}}
+{{#if (eq packageManager "yarn")}}
+RUN corepack enable yarn && yarn install --immutable
+{{/if}}
+{{#if (eq packageManager "npm")}}
+RUN npm ci
+{{/if}}
+{{#if (eq packageManager "bun")}}
+RUN npm install -g bun && bun install --frozen-lockfile
+{{/if}}
+
+COPY . .
+RUN {{#if (eq packageManager "npm")}}npm run build{{/if}}{{#if (eq packageManager "pnpm")}}pnpm build{{/if}}{{#if (eq packageManager "yarn")}}yarn build{{/if}}{{#if (eq packageManager "bun")}}bun run build{{/if}}
+
+# ─── Stage 2: Runner ──────────────────────────────────────────────────────────
+FROM node:20-alpine AS runner
+RUN apk add --no-cache dumb-init
+WORKDIR /app
+
+ENV NODE_ENV=production
+
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 appuser
+
+COPY --from=builder --chown=appuser:nodejs /app/dist ./dist
+COPY --from=builder --chown=appuser:nodejs /app/node_modules ./node_modules
+COPY --chown=appuser:nodejs package.json ./
+
+USER appuser
+
+ENTRYPOINT ["dumb-init", "--", "node", "dist/index.js"]
+{{/if}}
+
+{{#if (eq template "react")}}
+# ─── Stage 1: Builder ─────────────────────────────────────────────────────────
+FROM node:20-alpine AS builder
+RUN apk add --no-cache libc6-compat
+WORKDIR /app
+
+COPY package.json {{#if (eq packageManager "npm")}}package-lock.json{{/if}}{{#if (eq packageManager "pnpm")}}pnpm-lock.yaml{{/if}}{{#if (eq packageManager "yarn")}}yarn.lock{{/if}}{{#if (eq packageManager "bun")}}bun.lockb{{/if}} ./
+{{#if (eq packageManager "pnpm")}}
+RUN corepack enable pnpm && pnpm install --frozen-lockfile
+{{/if}}
+{{#if (eq packageManager "yarn")}}
+RUN corepack enable yarn && yarn install --immutable
+{{/if}}
+{{#if (eq packageManager "npm")}}
+RUN npm ci
+{{/if}}
+{{#if (eq packageManager "bun")}}
+RUN npm install -g bun && bun install --frozen-lockfile
+{{/if}}
+
+COPY . .
+RUN {{#if (eq packageManager "npm")}}npm run build{{/if}}{{#if (eq packageManager "pnpm")}}pnpm build{{/if}}{{#if (eq packageManager "yarn")}}yarn build{{/if}}{{#if (eq packageManager "bun")}}bun run build{{/if}}
+
+# ─── Stage 2: Runner (nginx) ──────────────────────────────────────────────────
+FROM nginx:1.27-alpine AS runner
+
+COPY --from=builder /app/dist /usr/share/nginx/html
+
+# SPA fallback: all routes serve index.html
+RUN printf 'server {\n\
+    listen 80;\n\
+    server_name _;\n\
+    root /usr/share/nginx/html;\n\
+    index index.html;\n\
+    location / {\n\
+        try_files $uri $uri/ /index.html;\n\
+    }\n\
+    location ~* \\.(?:css|js|woff2?|png|jpg|svg|ico)$ {\n\
+        expires 1y;\n\
+        add_header Cache-Control "public, immutable";\n\
+    }\n\
+}\n' > /etc/nginx/conf.d/default.conf
+
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]
+{{/if}}

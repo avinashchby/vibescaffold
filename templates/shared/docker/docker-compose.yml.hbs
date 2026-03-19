@@ -1,0 +1,124 @@
+name: {{projectName}}
+
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    {{#if (eq template "api")}}
+    ports:
+      - "3000:3000"
+    {{/if}}
+    {{#if (eq template "nextjs")}}
+    ports:
+      - "3000:3000"
+    {{/if}}
+    {{#if (eq template "react")}}
+    ports:
+      - "80:80"
+    {{/if}}
+    environment:
+      NODE_ENV: production
+      {{#if (eq database "postgres")}}
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@db:5432/{{projectName}}
+      {{/if}}
+      {{#if (eq database "mysql")}}
+      DATABASE_URL: mysql://root:${MYSQL_ROOT_PASSWORD:-root}@db:3306/{{projectName}}
+      {{/if}}
+      {{#if (eq database "sqlite")}}
+      DATABASE_URL: file:/data/app.db
+      {{/if}}
+      {{#if (eq auth "nextauth")}}
+      NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3000}
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:?NEXTAUTH_SECRET is required}
+      {{/if}}
+      {{#if (eq auth "jwt")}}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      {{/if}}
+    {{#if (neq database "none")}}
+    depends_on:
+      {{#if (eq database "sqlite")}}# sqlite has no external service{{/if}}
+      {{#if (eq database "postgres")}}
+      db:
+        condition: service_healthy
+      {{/if}}
+      {{#if (eq database "mysql")}}
+      db:
+        condition: service_healthy
+      {{/if}}
+    {{/if}}
+    {{#if (eq database "sqlite")}}
+    volumes:
+      - sqlite_data:/data
+    {{/if}}
+    restart: unless-stopped
+    networks:
+      - app_network
+
+{{#if (eq database "postgres")}}
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: {{projectName}}
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - app_network
+{{/if}}
+
+{{#if (eq database "mysql")}}
+  db:
+    image: mysql:8-debian
+    environment:
+      MYSQL_DATABASE: {{projectName}}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - app_network
+{{/if}}
+
+{{#if (eq database "postgres")}}
+  # Optional: Adminer for database management
+  # adminer:
+  #   image: adminer
+  #   ports:
+  #     - "8080:8080"
+  #   depends_on:
+  #     - db
+  #   networks:
+  #     - app_network
+{{/if}}
+
+volumes:
+  {{#if (eq database "postgres")}}
+  postgres_data:
+  {{/if}}
+  {{#if (eq database "mysql")}}
+  mysql_data:
+  {{/if}}
+  {{#if (eq database "sqlite")}}
+  sqlite_data:
+  {{/if}}
+
+networks:
+  app_network:
+    driver: bridge

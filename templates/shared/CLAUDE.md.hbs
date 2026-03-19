@@ -1,0 +1,227 @@
+# CLAUDE.md — AI Coding Assistant Instructions
+
+## Project Overview
+
+**Name:** {{projectName}}
+**Template:** {{template}}
+**Package Manager:** {{packageManager}}
+**License:** {{license}}
+
+{{#if (eq template "nextjs")}}
+**Stack:** Next.js 14 (App Router), TypeScript, Tailwind CSS, shadcn/ui{{#if (neq database "none")}}, Prisma ORM{{/if}}{{#if (neq auth "none")}}, NextAuth.js{{/if}}
+{{/if}}
+{{#if (eq template "api")}}
+**Stack:** Express.js, TypeScript, Zod (validation){{#if (neq database "none")}}, Prisma ORM{{/if}}{{#if (neq auth "none")}}, JWT authentication{{/if}}
+{{/if}}
+{{#if (eq template "cli")}}
+**Stack:** TypeScript, Commander.js, Node.js ESM
+{{/if}}
+{{#if (eq template "react")}}
+**Stack:** Vite, React 18, TypeScript, Tailwind CSS, shadcn/ui, React Router v6
+{{/if}}
+
+## Commands
+
+```bash
+# Install dependencies
+{{#if (eq packageManager "npm")}}npm install{{/if}}
+{{#if (eq packageManager "pnpm")}}pnpm install{{/if}}
+{{#if (eq packageManager "yarn")}}yarn install{{/if}}
+{{#if (eq packageManager "bun")}}bun install{{/if}}
+
+# Development
+{{#if (eq packageManager "npm")}}npm run dev{{/if}}
+{{#if (eq packageManager "pnpm")}}pnpm dev{{/if}}
+{{#if (eq packageManager "yarn")}}yarn dev{{/if}}
+{{#if (eq packageManager "bun")}}bun dev{{/if}}
+
+# Build
+{{#if (eq packageManager "npm")}}npm run build{{/if}}
+{{#if (eq packageManager "pnpm")}}pnpm build{{/if}}
+{{#if (eq packageManager "yarn")}}yarn build{{/if}}
+{{#if (eq packageManager "bun")}}bun run build{{/if}}
+
+# Test
+{{#if (eq packageManager "npm")}}npm test{{/if}}
+{{#if (eq packageManager "pnpm")}}pnpm test{{/if}}
+{{#if (eq packageManager "yarn")}}yarn test{{/if}}
+{{#if (eq packageManager "bun")}}bun test{{/if}}
+
+# Lint
+{{#if (eq packageManager "npm")}}npm run lint{{/if}}
+{{#if (eq packageManager "pnpm")}}pnpm lint{{/if}}
+{{#if (eq packageManager "yarn")}}yarn lint{{/if}}
+{{#if (eq packageManager "bun")}}bun run lint{{/if}}
+
+# Format
+{{#if (eq packageManager "npm")}}npm run format{{/if}}
+{{#if (eq packageManager "pnpm")}}pnpm format{{/if}}
+{{#if (eq packageManager "yarn")}}yarn format{{/if}}
+{{#if (eq packageManager "bun")}}bun run format{{/if}}
+```
+
+{{#if (neq database "none")}}
+## Database
+
+**Engine:** {{database}}
+
+```bash
+# Run migrations
+{{#if (eq packageManager "npm")}}npm run db:migrate{{/if}}
+{{#if (eq packageManager "pnpm")}}pnpm db:migrate{{/if}}
+{{#if (eq packageManager "yarn")}}yarn db:migrate{{/if}}
+{{#if (eq packageManager "bun")}}bun run db:migrate{{/if}}
+
+# Open Prisma Studio
+{{#if (eq packageManager "npm")}}npm run db:studio{{/if}}
+{{#if (eq packageManager "pnpm")}}pnpm db:studio{{/if}}
+{{#if (eq packageManager "yarn")}}yarn db:studio{{/if}}
+{{#if (eq packageManager "bun")}}bun run db:studio{{/if}}
+
+# Seed database
+{{#if (eq packageManager "npm")}}npm run db:seed{{/if}}
+{{#if (eq packageManager "pnpm")}}pnpm db:seed{{/if}}
+{{#if (eq packageManager "yarn")}}yarn db:seed{{/if}}
+{{#if (eq packageManager "bun")}}bun run db:seed{{/if}}
+```
+
+Schema is in `prisma/schema.prisma`. Always run migrations after changing the schema.
+{{/if}}
+
+## Coding Style
+
+- **Language:** TypeScript (strict mode, no `any`)
+- **Modules:** ESM only (`"type": "module"` in package.json), use `.js` extensions in imports
+- **Formatting:** Biome (replaces ESLint + Prettier), config in `biome.json`
+- **Max function length:** 50 lines — decompose if longer
+- **Max file length:** 500 lines — split into modules if longer
+- **No `.unwrap()`-style patterns** — always handle errors explicitly
+- **Error handling:** Use typed errors and discriminated unions; never silently swallow errors
+- **Naming:** `camelCase` for variables/functions, `PascalCase` for types/classes, `SCREAMING_SNAKE_CASE` for constants
+- **Imports:** Group by: built-ins → external packages → internal modules → types
+
+### TypeScript Rules
+
+```json
+{
+  "strict": true,
+  "noUncheckedIndexedAccess": true,
+  "exactOptionalPropertyTypes": true
+}
+```
+
+- Prefer `interface` over `type` for object shapes
+- Use `satisfies` operator instead of `as` assertions
+- All exported functions must have explicit return types
+- Use `unknown` instead of `any`; narrow with type guards
+
+{{#if (eq template "nextjs")}}
+## Next.js Conventions
+
+- Use **App Router** (`app/` directory) — do NOT use Pages Router
+- **Server Components** by default; add `"use client"` only when needed (event handlers, hooks, browser APIs)
+- **Server Actions** for mutations (forms, data updates) — colocate in `app/` or a `actions/` dir
+- Route handlers live in `app/api/*/route.ts`
+- Shared UI components in `components/`; shadcn/ui components in `components/ui/`
+- Page-specific components colocated with their page
+- Use `next/image` for all images; use `next/font` for fonts
+- Environment variables: `NEXT_PUBLIC_*` for client-side, plain for server-side only
+{{/if}}
+
+{{#if (eq template "api")}}
+## API Conventions
+
+- Route handlers in `src/routes/`; one file per resource
+- Middleware in `src/middleware/`
+- Service layer in `src/services/` — business logic goes here, NOT in routes
+- Validation with Zod schemas in `src/schemas/`; validate at the route boundary
+- Always return consistent JSON: `{ data, error, meta }`
+- Use HTTP status codes correctly: 200/201/204 for success, 400/401/403/404/422/500 for errors
+- Never leak stack traces to clients in production
+{{/if}}
+
+{{#if (eq template "cli")}}
+## CLI Conventions
+
+- Commands registered in `src/commands/`; one file per command
+- Shared utilities in `src/utils/`
+- Use `commander` for argument parsing and `@inquirer/prompts` for interactive prompts
+- Always provide `--help` descriptions for every option
+- Exit codes: 0 for success, 1 for general errors, 2 for misuse
+- Log to `stderr` for diagnostics; `stdout` for machine-readable output
+{{/if}}
+
+{{#if (eq template "react")}}
+## React Conventions
+
+- Feature-based folder structure: `src/features/<feature>/`
+- Shared components in `src/components/`; shadcn/ui in `src/components/ui/`
+- Routes defined in `src/router.tsx` using React Router v6 `createBrowserRouter`
+- Global state via Zustand (`src/store/`); server state via TanStack Query
+- Custom hooks in `src/hooks/`; one hook per file
+- API calls in `src/api/`; never fetch directly in components
+{{/if}}
+
+## Project Structure
+
+```
+{{projectName}}/
+├── src/
+{{#if (eq template "nextjs")}}
+│   ├── app/              # App Router pages and layouts
+│   │   ├── layout.tsx    # Root layout
+│   │   ├── page.tsx      # Home page
+│   │   └── api/          # Route handlers
+│   ├── components/       # Shared UI components
+│   │   └── ui/           # shadcn/ui components
+│   ├── lib/              # Utilities and helpers
+│   └── types/            # TypeScript type definitions
+{{/if}}
+{{#if (eq template "api")}}
+│   ├── routes/           # Express route handlers
+│   ├── middleware/        # Express middleware
+│   ├── services/          # Business logic
+│   ├── schemas/           # Zod validation schemas
+│   ├── lib/               # Utilities and helpers
+│   └── types/             # TypeScript type definitions
+{{/if}}
+{{#if (eq template "cli")}}
+│   ├── commands/          # CLI command handlers
+│   ├── utils/             # Shared utilities
+│   └── types/             # TypeScript type definitions
+{{/if}}
+{{#if (eq template "react")}}
+│   ├── features/          # Feature modules
+│   ├── components/        # Shared UI components
+│   │   └── ui/            # shadcn/ui components
+│   ├── hooks/             # Custom React hooks
+│   ├── api/               # API client functions
+│   ├── store/             # Zustand stores
+│   └── types/             # TypeScript type definitions
+{{/if}}
+{{#if (neq database "none")}}
+├── prisma/
+│   ├── schema.prisma      # Database schema
+│   └── migrations/        # Migration history
+{{/if}}
+├── tests/                 # Test files (mirror src/ structure)
+├── .env                   # Local environment (gitignored)
+├── .env.example           # Environment variable template
+├── biome.json             # Linter/formatter config
+└── tsconfig.json          # TypeScript config
+```
+
+## Git Workflow
+
+- Conventional commits: `feat:`, `fix:`, `refactor:`, `docs:`, `test:`, `chore:`
+- Never commit `.env` — use `.env.example` as the template
+- Run lint and tests before pushing: `{{#if (eq packageManager "npm")}}npm run lint && npm test{{/if}}{{#if (eq packageManager "pnpm")}}pnpm lint && pnpm test{{/if}}{{#if (eq packageManager "yarn")}}yarn lint && yarn test{{/if}}{{#if (eq packageManager "bun")}}bun run lint && bun test{{/if}}`
+
+## What NOT to Do
+
+- Do not add speculative features — build what's needed now
+- Do not use `any` — use `unknown` and narrow properly
+- Do not bypass TypeScript errors with `@ts-ignore` or `@ts-expect-error` without explanation
+- Do not add dependencies without checking if a built-in or existing dep can handle it
+- Do not write functions longer than 50 lines without decomposing
+- Do not commit secrets or `.env` files

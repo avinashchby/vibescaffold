@@ -1,0 +1,39 @@
+{
+  "name": "{{projectName}}",
+  "version": "0.1.0",
+  "description": "Express API — {{projectName}}",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "test": "vitest run",
+    "lint": "tsc --noEmit",
+    "db:push": "prisma db push",
+    "db:migrate": "prisma migrate dev"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "zod": "^3.24.1",
+    "cors": "^2.8.5",
+    "helmet": "^8.0.0",
+    "dotenv": "^16.4.7"{{#if (neq database "none")}},
+    "prisma": "^5.22.0",
+    "@prisma/client": "^5.22.0"{{/if}}{{#if (eq auth "jwt")}},
+    "jsonwebtoken": "^9.0.2",
+    "bcryptjs": "^2.4.3"{{/if}}
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2",
+    "@types/node": "^22.10.0",
+    "@types/express": "^5.0.0",
+    "@types/cors": "^2.8.17",{{#if (eq auth "jwt")}}
+    "@types/jsonwebtoken": "^9.0.7",
+    "@types/bcryptjs": "^2.4.6",{{/if}}
+    "vitest": "^2.1.8",
+    "supertest": "^7.0.0",
+    "@types/supertest": "^6.0.2",
+    "tsx": "^4.19.2"
+  }
+}

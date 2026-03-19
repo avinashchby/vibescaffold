@@ -1,0 +1,92 @@
+# Cursor Rules — {{projectName}}
+
+## Project Context
+
+This is **{{projectName}}**, a {{#if (eq template "nextjs")}}Next.js 14 (App Router) full-stack application{{/if}}{{#if (eq template "api")}}Express REST API{{/if}}{{#if (eq template "cli")}}Node.js CLI tool{{/if}}{{#if (eq template "react")}}Vite + React SPA{{/if}} built with TypeScript.
+
+**Package manager:** {{packageManager}}
+**License:** {{license}}
+{{#if (neq database "none")}}**Database:** {{database}} (via Prisma ORM){{/if}}
+{{#if (neq auth "none")}}**Auth:** {{#if (eq auth "nextauth")}}NextAuth.js{{/if}}{{#if (eq auth "jwt")}}JWT{{/if}}{{/if}}
+
+## TypeScript Rules
+
+- Strict mode is enabled — no `any`, ever. Use `unknown` and narrow with type guards.
+- All exported functions must have explicit return types.
+- Use `satisfies` for type assertions instead of `as`.
+- Prefer `interface` over `type` for object shapes.
+- `noUncheckedIndexedAccess` is on — always check array/object access results.
+- ESM only: use `.js` extensions in all relative imports (even for `.ts` files).
+
+## Code Style
+
+- Biome is the formatter and linter — do not suggest ESLint/Prettier changes.
+- Max function length: 50 lines. Decompose if longer.
+- Max file length: 500 lines. Split into modules if longer.
+- `camelCase` variables/functions, `PascalCase` types/classes, `SCREAMING_SNAKE_CASE` constants.
+- Group imports: built-ins → external packages → internal → types.
+- No default exports except for Next.js pages/layouts and React components (use named exports elsewhere).
+
+{{#if (eq template "nextjs")}}
+## Next.js Rules
+
+- App Router only — never suggest Pages Router patterns.
+- Default to Server Components; add `"use client"` only for event handlers, hooks, and browser APIs.
+- Use Server Actions for all data mutations.
+- Use `next/image` for images, `next/font` for fonts.
+- `NEXT_PUBLIC_` prefix only for env vars that must be readable by the browser.
+- Keep route handlers in `app/api/*/route.ts`.
+{{/if}}
+
+{{#if (eq template "api")}}
+## API Rules
+
+- Routes in `src/routes/`, services in `src/services/` — business logic belongs in services.
+- Validate ALL inputs at the route boundary using Zod schemas from `src/schemas/`.
+- Always return `{ data, error, meta }` shaped JSON.
+- Never expose stack traces to clients in production.
+- Use correct HTTP semantics: 201 for creation, 204 for no-body success, 422 for validation errors.
+{{/if}}
+
+{{#if (eq template "cli")}}
+## CLI Rules
+
+- One command per file under `src/commands/`.
+- Every option needs a description for `--help` output.
+- Exit with code 0 (success), 1 (error), or 2 (misuse).
+- Write diagnostics to `stderr`, machine-readable output to `stdout`.
+{{/if}}
+
+{{#if (eq template "react")}}
+## React Rules
+
+- Feature-based structure: `src/features/<feature>/`.
+- No direct fetching in components — use hooks from `src/api/` with TanStack Query.
+- Routes in `src/router.tsx` using `createBrowserRouter`.
+- Global state in Zustand stores (`src/store/`).
+- One custom hook per file in `src/hooks/`.
+{{/if}}
+
+{{#if (neq database "none")}}
+## Database Rules
+
+- Schema lives in `prisma/schema.prisma` — edit there, then migrate.
+- Always run `{{#if (eq packageManager "npm")}}npm run db:migrate{{/if}}{{#if (eq packageManager "pnpm")}}pnpm db:migrate{{/if}}{{#if (eq packageManager "yarn")}}yarn db:migrate{{/if}}{{#if (eq packageManager "bun")}}bun run db:migrate{{/if}}` after schema changes.
+- No raw SQL unless Prisma cannot express the query.
+- Never call Prisma client directly in route handlers — go through the service layer.
+{{/if}}
+
+## Testing
+
+- Test files mirror `src/` structure under `tests/`.
+- Unit test every service function and utility.
+- Integration tests for all API routes / commands.
+- Do not mock what you can use in-process (prefer real implementations with test fixtures).
+
+## What to Avoid
+
+- Speculative features — only build what's explicitly requested.
+- `@ts-ignore` or `@ts-expect-error` without a comment explaining why.
+- Installing new dependencies without first checking existing ones.
+- Committing `.env` files — always use `.env.example` as the template.
+- Inline TODO comments — open an issue instead.

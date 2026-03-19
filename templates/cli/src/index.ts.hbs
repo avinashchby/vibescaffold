@@ -1,0 +1,19 @@
+/**
+ * Core library for {{projectName}}.
+ *
+ * Keep business logic here — import into cli.ts for the CLI surface and
+ * into tests directly for unit coverage.
+ */
+
+/**
+ * Return a greeting string for the given name.
+ *
+ * @param name - The name to greet.
+ * @returns A greeting string.
+ */
+export function hello(name: string): string {
+  if (!name.trim()) {
+    throw new Error("name must not be blank");
+  }
+  return `Hello, ${name}!`;
+}

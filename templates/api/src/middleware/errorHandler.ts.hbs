@@ -1,0 +1,37 @@
+import type { ErrorRequestHandler } from "express";
+
+/** Shape of structured error responses. */
+interface ErrorResponse {
+  error: string;
+  message: string;
+  statusCode: number;
+}
+
+/**
+ * Global Express error handler.
+ *
+ * Catches any error passed to `next(err)` and returns a JSON response.
+ * Must be registered LAST in the middleware chain.
+ */
+export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
+  const statusCode: number =
+    typeof (err as { statusCode?: unknown }).statusCode === "number"
+      ? (err as { statusCode: number }).statusCode
+      : 500;
+
+  const message: string =
+    err instanceof Error ? err.message : "An unexpected error occurred";
+
+  const body: ErrorResponse = {
+    error: statusCode >= 500 ? "Internal Server Error" : "Request Error",
+    message,
+    statusCode,
+  };
+
+  // Never leak stack traces in production.
+  if (process.env.NODE_ENV !== "production" && err instanceof Error) {
+    console.error(err.stack);
+  }
+
+  res.status(statusCode).json(body);
+};

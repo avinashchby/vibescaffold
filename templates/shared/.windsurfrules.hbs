@@ -1,0 +1,127 @@
+# Windsurf Rules — {{projectName}}
+
+## Project Identity
+
+- **Name:** {{projectName}}
+- **Type:** {{#if (eq template "nextjs")}}Next.js 14 full-stack app (App Router){{/if}}{{#if (eq template "api")}}Express REST API{{/if}}{{#if (eq template "cli")}}Node.js CLI tool{{/if}}{{#if (eq template "react")}}Vite + React SPA{{/if}}
+- **Language:** TypeScript (strict)
+- **Package manager:** {{packageManager}}
+{{#if (neq database "none")}}
+- **Database:** {{database}} via Prisma ORM
+{{/if}}
+{{#if (neq auth "none")}}
+- **Auth:** {{#if (eq auth "nextauth")}}NextAuth.js{{/if}}{{#if (eq auth "jwt")}}JWT (jsonwebtoken){{/if}}
+{{/if}}
+
+## Cascade Behavior
+
+When Cascade suggests code for this project, it must:
+
+1. Use TypeScript strict mode — `any` is forbidden; use `unknown` + type narrowing.
+2. Use ESM syntax — `.js` extensions in relative imports (even for `.ts` sources).
+3. Respect 50-line function limit and 500-line file limit.
+4. Run through Biome for formatting (tabs, double quotes, trailing commas).
+5. Write tests alongside any new feature code.
+6. Follow the directory structure described below.
+
+## Directory Structure
+
+```
+{{projectName}}/
+├── src/
+{{#if (eq template "nextjs")}}
+│   ├── app/              # App Router (pages, layouts, route handlers)
+│   ├── components/       # Shared React components
+│   │   └── ui/           # shadcn/ui primitives
+│   ├── lib/              # Pure utilities (no side effects)
+│   └── types/            # Shared TypeScript types
+{{/if}}
+{{#if (eq template "api")}}
+│   ├── routes/           # Express routers (one per resource)
+│   ├── middleware/        # Express middleware
+│   ├── services/          # Business logic (no HTTP knowledge)
+│   ├── schemas/           # Zod validation schemas
+│   ├── lib/               # Pure utilities
+│   └── types/             # Shared TypeScript types
+{{/if}}
+{{#if (eq template "cli")}}
+│   ├── commands/          # Commander command definitions
+│   ├── utils/             # Shared helpers
+│   └── types/             # TypeScript types
+{{/if}}
+{{#if (eq template "react")}}
+│   ├── features/          # Feature slices (co-located components, hooks, api)
+│   ├── components/        # Globally shared UI components
+│   │   └── ui/            # shadcn/ui primitives
+│   ├── hooks/             # Global custom hooks
+│   ├── api/               # API client layer (TanStack Query)
+│   ├── store/             # Zustand global stores
+│   └── types/             # Shared TypeScript types
+{{/if}}
+{{#if (neq database "none")}}
+├── prisma/
+│   ├── schema.prisma
+│   └── migrations/
+{{/if}}
+├── tests/
+├── .env.example
+├── biome.json
+└── tsconfig.json
+```
+
+## Commands Reference
+
+| Task | Command |
+|------|---------|
+| Install | `{{#if (eq packageManager "npm")}}npm install{{/if}}{{#if (eq packageManager "pnpm")}}pnpm install{{/if}}{{#if (eq packageManager "yarn")}}yarn install{{/if}}{{#if (eq packageManager "bun")}}bun install{{/if}}` |
+| Dev | `{{#if (eq packageManager "npm")}}npm run dev{{/if}}{{#if (eq packageManager "pnpm")}}pnpm dev{{/if}}{{#if (eq packageManager "yarn")}}yarn dev{{/if}}{{#if (eq packageManager "bun")}}bun dev{{/if}}` |
+| Build | `{{#if (eq packageManager "npm")}}npm run build{{/if}}{{#if (eq packageManager "pnpm")}}pnpm build{{/if}}{{#if (eq packageManager "yarn")}}yarn build{{/if}}{{#if (eq packageManager "bun")}}bun run build{{/if}}` |
+| Test | `{{#if (eq packageManager "npm")}}npm test{{/if}}{{#if (eq packageManager "pnpm")}}pnpm test{{/if}}{{#if (eq packageManager "yarn")}}yarn test{{/if}}{{#if (eq packageManager "bun")}}bun test{{/if}}` |
+| Lint | `{{#if (eq packageManager "npm")}}npm run lint{{/if}}{{#if (eq packageManager "pnpm")}}pnpm lint{{/if}}{{#if (eq packageManager "yarn")}}yarn lint{{/if}}{{#if (eq packageManager "bun")}}bun run lint{{/if}}` |
+{{#if (neq database "none")}}
+| DB Migrate | `{{#if (eq packageManager "npm")}}npm run db:migrate{{/if}}{{#if (eq packageManager "pnpm")}}pnpm db:migrate{{/if}}{{#if (eq packageManager "yarn")}}yarn db:migrate{{/if}}{{#if (eq packageManager "bun")}}bun run db:migrate{{/if}}` |
+| DB Studio | `{{#if (eq packageManager "npm")}}npm run db:studio{{/if}}{{#if (eq packageManager "pnpm")}}pnpm db:studio{{/if}}{{#if (eq packageManager "yarn")}}yarn db:studio{{/if}}{{#if (eq packageManager "bun")}}bun run db:studio{{/if}}` |
+{{/if}}
+
+{{#if (eq template "nextjs")}}
+## Next.js Specifics
+
+- **Always** use the App Router. Never suggest `pages/` directory patterns.
+- Server Components are the default; `"use client"` is opt-in.
+- Mutations go in Server Actions, not client-side fetch calls.
+- Use `next/image` for all `<img>` tags.
+- Keep environment secrets out of `NEXT_PUBLIC_` prefix.
+{{/if}}
+
+{{#if (eq template "api")}}
+## API Specifics
+
+- HTTP layer (routes) must not contain business logic — delegate to services.
+- Zod schemas are the single source of truth for input shapes.
+- Response envelope: `{ data: T | null, error: string | null, meta?: object }`.
+- Log errors server-side; return user-safe messages to clients.
+{{/if}}
+
+{{#if (eq template "cli")}}
+## CLI Specifics
+
+- Parse arguments with Commander; interactive prompts with `@inquirer/prompts`.
+- All options must have `.description()` for `--help`.
+- Use `process.exitCode = 1` over `process.exit(1)` where possible (allows cleanup).
+{{/if}}
+
+{{#if (eq template "react")}}
+## React Specifics
+
+- Data fetching: TanStack Query (never raw `useEffect` + `fetch`).
+- Routing: React Router v6 with `createBrowserRouter`.
+- Styling: Tailwind utility classes; no inline styles.
+- State: local → `useState`, global → Zustand, server → TanStack Query.
+{{/if}}
+
+## Hard Rules
+
+- Never commit `.env` — the committed file is always `.env.example`.
+- No `any` in TypeScript — zero tolerance.
+- Conventional commits only: `feat:`, `fix:`, `refactor:`, `docs:`, `test:`, `chore:`.
+- No speculative or "nice to have" features unless explicitly requested.

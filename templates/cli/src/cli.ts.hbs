@@ -1,0 +1,36 @@
+#!/usr/bin/env node
+import { Command } from "commander";
+import chalk from "chalk";
+import { hello } from "./index.js";
+
+const program = new Command();
+
+program
+  .name("{{projectName}}")
+  .description("{{projectName}} CLI")
+  .version("0.1.0");
+
+program
+  .command("greet [name]")
+  .description("Greet someone by name")
+  .option("-u, --uppercase", "print greeting in uppercase")
+  .action((name: string | undefined, opts: { uppercase?: boolean }) => {
+    const message = hello(name ?? "world");
+    console.log(chalk.green(opts.uppercase ? message.toUpperCase() : message));
+  });
+
+program
+  .command("version-info", { isDefault: false })
+  .description("Print detailed version information")
+  .action(() => {
+    console.log(chalk.cyan("{{projectName}}") + chalk.gray(" v0.1.0"));
+    console.log(chalk.gray(`Node.js ${process.version}`));
+  });
+
+// Default action when no sub-command is given.
+program.action(() => {
+  console.log(chalk.bold("{{projectName}}"));
+  console.log(chalk.gray('Run with --help to see available commands.'));
+});
+
+program.parse(process.argv);

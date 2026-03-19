@@ -1,0 +1,8 @@
+import { Router } from "express";
+
+/** Health check router — GET /health */
+export const healthRouter = Router();
+
+healthRouter.get("/", (_req, res) => {
+  res.json({ status: "ok", timestamp: new Date().toISOString() });
+});

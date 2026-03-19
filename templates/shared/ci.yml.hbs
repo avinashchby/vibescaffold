@@ -1,0 +1,145 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    name: Lint, Build & Test
+    runs-on: ubuntu-latest
+
+    {{#if (neq database "none")}}
+    services:
+      {{#if (eq database "postgres")}}
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: {{projectName}}_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      {{/if}}
+      {{#if (eq database "mysql")}}
+      mysql:
+        image: mysql:8-debian
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: {{projectName}}_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "mysqladmin ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      {{/if}}
+    {{/if}}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          {{#if (eq packageManager "npm")}}
+          cache: 'npm'
+          {{/if}}
+          {{#if (eq packageManager "pnpm")}}
+          cache: 'pnpm'
+          {{/if}}
+          {{#if (eq packageManager "yarn")}}
+          cache: 'yarn'
+          {{/if}}
+
+      {{#if (eq packageManager "pnpm")}}
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+      {{/if}}
+
+      {{#if (eq packageManager "bun")}}
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      {{/if}}
+
+      - name: Install dependencies
+        run: {{#if (eq packageManager "npm")}}npm ci{{/if}}{{#if (eq packageManager "pnpm")}}pnpm install --frozen-lockfile{{/if}}{{#if (eq packageManager "yarn")}}yarn install --immutable{{/if}}{{#if (eq packageManager "bun")}}bun install --frozen-lockfile{{/if}}
+
+      {{#if (neq database "none")}}
+      - name: Run database migrations
+        env:
+          {{#if (eq database "postgres")}}
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/{{projectName}}_test
+          {{/if}}
+          {{#if (eq database "mysql")}}
+          DATABASE_URL: mysql://root:root@localhost:3306/{{projectName}}_test
+          {{/if}}
+          {{#if (eq database "sqlite")}}
+          DATABASE_URL: file:./test.db
+          {{/if}}
+        run: {{#if (eq packageManager "npm")}}npm run db:migrate{{/if}}{{#if (eq packageManager "pnpm")}}pnpm db:migrate{{/if}}{{#if (eq packageManager "yarn")}}yarn db:migrate{{/if}}{{#if (eq packageManager "bun")}}bun run db:migrate{{/if}}
+      {{/if}}
+
+      - name: Type check
+        run: {{#if (eq packageManager "npm")}}npm run typecheck{{/if}}{{#if (eq packageManager "pnpm")}}pnpm typecheck{{/if}}{{#if (eq packageManager "yarn")}}yarn typecheck{{/if}}{{#if (eq packageManager "bun")}}bun run typecheck{{/if}}
+
+      - name: Lint
+        run: {{#if (eq packageManager "npm")}}npm run lint{{/if}}{{#if (eq packageManager "pnpm")}}pnpm lint{{/if}}{{#if (eq packageManager "yarn")}}yarn lint{{/if}}{{#if (eq packageManager "bun")}}bun run lint{{/if}}
+
+      - name: Build
+        env:
+          {{#if (neq database "none")}}
+          {{#if (eq database "postgres")}}
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/{{projectName}}_test
+          {{/if}}
+          {{#if (eq database "mysql")}}
+          DATABASE_URL: mysql://root:root@localhost:3306/{{projectName}}_test
+          {{/if}}
+          {{#if (eq database "sqlite")}}
+          DATABASE_URL: file:./test.db
+          {{/if}}
+          {{/if}}
+          {{#if (eq auth "nextauth")}}
+          NEXTAUTH_SECRET: ci-test-secret-not-for-production
+          NEXTAUTH_URL: http://localhost:3000
+          {{/if}}
+          {{#if (eq auth "jwt")}}
+          JWT_SECRET: ci-test-secret-not-for-production
+          {{/if}}
+        run: {{#if (eq packageManager "npm")}}npm run build{{/if}}{{#if (eq packageManager "pnpm")}}pnpm build{{/if}}{{#if (eq packageManager "yarn")}}yarn build{{/if}}{{#if (eq packageManager "bun")}}bun run build{{/if}}
+
+      - name: Test
+        env:
+          {{#if (neq database "none")}}
+          {{#if (eq database "postgres")}}
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/{{projectName}}_test
+          {{/if}}
+          {{#if (eq database "mysql")}}
+          DATABASE_URL: mysql://root:root@localhost:3306/{{projectName}}_test
+          {{/if}}
+          {{#if (eq database "sqlite")}}
+          DATABASE_URL: file:./test.db
+          {{/if}}
+          {{/if}}
+          {{#if (eq auth "jwt")}}
+          JWT_SECRET: ci-test-secret-not-for-production
+          {{/if}}
+        run: {{#if (eq packageManager "npm")}}npm test{{/if}}{{#if (eq packageManager "pnpm")}}pnpm test{{/if}}{{#if (eq packageManager "yarn")}}yarn test{{/if}}{{#if (eq packageManager "bun")}}bun test{{/if}}

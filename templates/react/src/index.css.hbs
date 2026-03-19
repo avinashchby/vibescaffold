@@ -1,0 +1,20 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  body {
+    @apply bg-white text-gray-900 antialiased;
+    margin: 0;
+  }
+
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-indigo-600;
+  }
+}
